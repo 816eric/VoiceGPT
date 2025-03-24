@@ -1,0 +1,2 @@
+PS D:\AI\OpenAI\microphone-gpt-project\src> py -3.10 -m venv env
+PS D:\AI\OpenAI\microphone-gpt-project\src> env\Scripts\activate
