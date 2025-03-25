@@ -50,7 +50,10 @@ class SmartMic(Microphone, AudioProc):
                     else:
                         silence_time = 0.0
                     if silence_time >= self.silence_duration:
-                        print("Silence detected for 1 second, stopping recording.")
+                        print("Stopping recording since silence for 1 second.")
+                        break
+                    if len(frames) * self.chunk / self.rate >= 20:
+                        print("Maximum recording duration of 20 seconds reached, stopping recording.")
                         break
                 audio_data = b''.join(frames)
                 text = self.convert_audio_to_text(audio_data)                

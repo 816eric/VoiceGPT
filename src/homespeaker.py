@@ -5,6 +5,7 @@ from mic.smartmic import SmartMic
 from speaker.speaker import Speaker
 from service.youtube import YouTube
 from service.chatgpt import GPTClient
+from service.smartnews import SmartNews
 
 class HomeSpeaker(SmartMic, Speaker):
     def __init__(self, chunk=1024, format=None, channels=1, rate=44100,
@@ -83,6 +84,7 @@ class HomeSpeaker(SmartMic, Speaker):
     #Analysis the command text, if the text include "play" word then get the text after "play" word, then call play_vidoe function to play the video. 
     def analysis_command(self, command_text):        
         if "play" in command_text:
+            self.yt.close_video()
             video_name = command_text.split("play")[-1].strip()
             print("Playing video: ", video_name)
             # Call YouTube class to play the video.
@@ -91,6 +93,10 @@ class HomeSpeaker(SmartMic, Speaker):
         elif "stop" in command_text or "close" in command_text:            
             self.interrupt_playback()
             self.yt.close_video()
+        elif "news" in command_text:
+            topic = command_text #.split("news")[-1].strip()
+            print("Searching news for: ", topic)
+            self.search_news(topic)
         else:
             self.ask_gpt(command_text)
 
@@ -104,6 +110,16 @@ class HomeSpeaker(SmartMic, Speaker):
         else:
             #if response is empty then play the command text
             self.play_text("sorry I can not find the answer for your question")
+
+    def search_news(self, topic):
+        #call smartnews class to get the news
+        news = SmartNews().get_news(topic)
+        #if news is not empty then play the news
+        if news:
+            self.play_text(news)
+        else:
+            #if news is empty then play the command text
+            self.play_text("sorry I can not find the news for your topic")
 
     #another thread to check the time and ask gpt the question
     def _routine_gpt_ask(self):   
