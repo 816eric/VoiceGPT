@@ -53,6 +53,13 @@ class Speaker:
         A new TTS engine is created for each call to avoid conflicts.
         """
         local_engine = pyttsx3.init()
+        local_engine.setProperty('rate', 130)  # Set speaking speed (default is usually around 200)
+        voices = local_engine.getProperty('voices')
+        for voice in voices:
+            #print(f"Voice ID: {voice.id}, Name: {voice.name}, Languages: {voice.languages}")
+            if 'zh' in voice.languages:  # Check if the voice supports Chinese
+                local_engine.setProperty('voice', voice.id)
+                break
         self.current_tts_engine = local_engine
         local_engine.say(text)
         local_engine.runAndWait()
@@ -92,6 +99,7 @@ class Speaker:
         Parameters:
         - text: The string to be spoken.
         """
+        print(f"Playing text: {text}")
         self.interrupt_playback()  # Interrupt current playback.
         self.stop_event.clear()
         self.playback_thread = threading.Thread(

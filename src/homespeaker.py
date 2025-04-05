@@ -6,6 +6,7 @@ from speaker.speaker import Speaker
 from service.youtube import YouTube
 from service.chatgpt import GPTClient
 from service.smartnews import SmartNews
+from cald.smartcal import MyCalendar
 
 class HomeSpeaker(SmartMic, Speaker):
     def __init__(self, chunk=1024, format=None, channels=1, rate=44100,
@@ -35,10 +36,11 @@ class HomeSpeaker(SmartMic, Speaker):
         self.monitor_thread = threading.Thread(target=self._monitor_commands, daemon=True)
         self.monitor_thread.start()
         # Start a thread to ask gpt the question every 1 minute
-        self.gpt_thread = threading.Thread(target=self._routine_gpt_ask, daemon=True)
-        self.gpt_thread.start()
+        #self.gpt_thread = threading.Thread(target=self._routine_gpt_ask, daemon=True)
+        #self.gpt_thread.start()
         self.yt = YouTube()
         self.chatgpt = GPTClient()
+        self.calendar = MyCalendar()
         print("HomeSpeaker started. Awaiting commands after wake-up word...")
 
     def _monitor_commands(self):
@@ -77,12 +79,18 @@ class HomeSpeaker(SmartMic, Speaker):
             self.stream.close()
         if hasattr(self, 'p'):
             self.p.terminate()
+        self.calendar.stop_all()
+        self.yt.close_video()
         # Call Speaker's stop method to interrupt any TTS or audio playback.
         Speaker.stop(self)
+        self.set_talk_session(False)
         print("HomeSpeaker stopped.")
 
     #Analysis the command text, if the text include "play" word then get the text after "play" word, then call play_vidoe function to play the video. 
     def analysis_command(self, command_text):        
+        if "talk to you" in command_text:
+            self.set_talk_session(True)
+            self.play_text("Hello, I am your home speaker. How can I help you? talk mode is on for 20 minutes")
         if "play" in command_text:
             self.yt.close_video()
             video_name = command_text.split("play")[-1].strip()
@@ -90,7 +98,8 @@ class HomeSpeaker(SmartMic, Speaker):
             # Call YouTube class to play the video.
             self.yt.play_video(video_name)
         #else if the command text include "stop" or "close" word, then stop the video
-        elif "stop" in command_text or "close" in command_text:            
+        elif "stop" in command_text or "close" in command_text:  
+            self.calendar.stop_all()          
             self.interrupt_playback()
             self.yt.close_video()
         elif "news" in command_text:
@@ -102,14 +111,15 @@ class HomeSpeaker(SmartMic, Speaker):
 
     def ask_gpt(self, question):
         #call chatgpt class to get the response
-        print("Asking GPT: ", question)
-        response = self.chatgpt.ask(question)
-        #if response is not empty then play the response
-        if response:
-            self.play_text(response)
-        else:
-            #if response is empty then play the command text
-            self.play_text("sorry I can not find the answer for your question")
+        if question and question.strip():
+            print("Asking GPT: ", question)
+            response = self.chatgpt.ask(question)
+            #if response is not empty then play the response
+            if response:
+                self.play_text(response)
+            else:
+                #if response is empty then play the command text
+                self.play_text("sorry I can not find the answer for your question")
 
     def search_news(self, topic):
         #call smartnews class to get the news
@@ -120,22 +130,6 @@ class HomeSpeaker(SmartMic, Speaker):
         else:
             #if news is empty then play the command text
             self.play_text("sorry I can not find the news for your topic")
-
-    #another thread to check the time and ask gpt the question
-    def _routine_gpt_ask(self):   
-        while self.running:
-            current_time = time.strftime("%H:%M:%S", time.localtime())
-            #define the time and question to ask gpt in a table
-            time_question = {
-                "01:14:00": "Tell me a jok?",
-                "01:15:00": "Who is the best football player?",
-                "01:16:00": "What is the dinner menu today?"
-            }
-            
-            #if the current time is in the table then ask gpt the question
-            if current_time in time_question:
-                self.ask_gpt(time_question[current_time])
-            time.sleep(1) 
 
 if __name__ == "__main__":
     try:

@@ -42,10 +42,21 @@ class YouTube:
         return None
 
     def _find_chrome_linux(self):
-        chrome_path = shutil.which("google-chrome")
-        if chrome_path:
-            return chrome_path
-        return shutil.which("chrome")
+        try:
+            # Check if chromium-browser is installed
+            result = subprocess.run(['which', 'chromium-browser'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            # If the result is empty, chromium-browser is not installed
+            if not result.stdout:
+                raise EnvironmentError("chromium-browser is not installed on this system.")
+                return None
+            else:
+                path = result.stdout.decode().strip()
+                print(f"chromium-browser is installed at: {path}")
+                return path
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return None
     
     def _find_chrome_mac(self):
         path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"

@@ -22,6 +22,7 @@ class SmartMic(Microphone, AudioProc):
         # Initialize the AudioProc part.
         AudioProc.__init__(self, chunk=chunk, format=format, channels=channels, rate=rate)
         self.wake_words = wake_words if wake_words is not None else ["hey gpt", "wake up", "hello"]
+        self.talk_session_time = 0 #10 * 60  # 10 minutes
                 
         # Override the default monitoring thread with our smart monitoring.
         if not hasattr(self, 'thread') or not self.thread.is_alive():
@@ -37,7 +38,10 @@ class SmartMic(Microphone, AudioProc):
         If a wake-up word is found, record the subsequent command (until 1 second of silence)
         and add the command audio to the queue.
         """
+        counter = 0
         while self.running:
+            counter += 1
+            self.talk_session_monitoring(counter)
             data = self.stream.read(self.chunk)
             if not self._is_silent(data):
                 frames = [data]
@@ -57,8 +61,9 @@ class SmartMic(Microphone, AudioProc):
                         break
                 audio_data = b''.join(frames)
                 text = self.convert_audio_to_text(audio_data)                
-                if self.detect_wakeup_words(text, self.wake_words):
-                    print("Wake-up word detected: ", text)
+                if self.detect_wakeup_words(text, self.wake_words) or self.get_talk_session():
+                    if not self.get_talk_session():
+                        print("Wake-up word detected: ", text)
                     self.audio_queue.put(audio_data)
             else:
                 time.sleep(0.01)
@@ -74,6 +79,36 @@ class SmartMic(Microphone, AudioProc):
         self.p.terminate()
         self.tts_engine.stop()
         print("SmartMic stopped.")
+
+    def set_talk_session(self, session):
+        """
+        Set the talk session status.
+        """
+        if session is True:
+            self.talk_session_time = 10 * 60  # 10 minutes
+            print("Talk session set to:", self.talk_session_time)
+        else:
+            self.talk_session_time = 0
+            print("Talk session ended.")
+    
+    def get_talk_session(self):
+        """
+        Get the current talk session status.
+        """
+        talk_session = False
+        #return true if talk_session_time is greater than 0
+        if self.talk_session_time > 0:
+            talk_session = True
+        return talk_session
+
+    def talk_session_monitoring(self, counter):
+        #switch talk session to off after 10 minutes if talk session is on  
+        if counter % 100 == 0:  #the monitoring is every 10ms, so count 100 times for 1 second 
+            if self.talk_session_time > 0:
+                self.talk_session_time -= 1
+                if self.talk_session_time <= 0:
+                    self.set_talk_session(False)
+                
 
 # if __name__ == "__main__":
 #     try:
